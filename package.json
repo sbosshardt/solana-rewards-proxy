@@ -1,0 +1,35 @@
+{
+  "name": "solana-rewards-proxy",
+  "version": "1.0.0",
+  "description": "API proxy for querying Solana staking rewards and historical exchange rates.",
+  "main": "index.js",
+  "scripts": {
+    "test": "node proxy.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sbosshardt/solana-rewards-proxy.git"
+  },
+  "keywords": [
+    "staking",
+    "rewards",
+    "income",
+    "historical",
+    "exchange",
+    "data",
+    "sol",
+    "usd",
+    "coinbase",
+    "solscan.io"
+  ],
+  "author": "Samuel Bosshardt",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sbosshardt/solana-rewards-proxy/issues"
+  },
+  "homepage": "https://github.com/sbosshardt/solana-rewards-proxy#readme",
+  "dependencies": {
+    "express": "^4.19.2",
+    "http-proxy-middleware": "^3.0.0"
+  }
+}
