@@ -29,6 +29,7 @@
   },
   "homepage": "https://github.com/sbosshardt/solana-rewards-proxy#readme",
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.19.2",
     "http-proxy-middleware": "^3.0.0"
   }

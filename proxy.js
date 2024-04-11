@@ -1,43 +1,72 @@
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const cors = require('cors');
 
 const app = express();
 
-const corsHeaders = (req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Method');
-    next();
-};
+app.use(cors());
 
-app.use(corsHeaders);  // Apply CORS headers to all incoming requests
+// Function to generate a random string for the Sol-Au header
+function generateRandomString() {
+    let e = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789==--",
+        t = Array(16).join().split(",").map(function () {
+            return e.charAt(Math.floor(Math.random() * e.length));
+        }).join(""),
+        r = Array(16).join().split(",").map(function () {
+            return e.charAt(Math.floor(Math.random() * e.length));
+        }).join(""),
+        n = Math.floor(31 * Math.random()),
+        o = "".concat(t).concat(r),
+        i = [o.slice(0, n), "B9dls02fK", o.slice(n)].join("");
+    return i;
+}
 
-app.options('*', (req, res) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Method');
-    res.sendStatus(200);
-});
+const middlewareHandler = {
+    proxyReq: (proxyReq, req, res) => {
+        console.log('onProxyReq triggered');
+        console.log('proxyReq headers before modification:', proxyReq.getHeaders());
 
-// Proxy endpoint for Solscan API
-app.use('/v2/validator/stake/reward', createProxyMiddleware({
-    target: 'https://api.solscan.io/v2/validator/stake/reward',
-    changeOrigin: true,
-    pathRewrite: { '^/v2/validator/stake/reward': '' },
-}));
+        // Remove potentially problematic headers
+        proxyReq.removeHeader('host');
+        proxyReq.removeHeader('x-forwarded-for');
+        proxyReq.removeHeader('x-forwarded-host');
+        proxyReq.removeHeader('x-forwarded-port');
+        proxyReq.removeHeader('x-forwarded-proto');
+        proxyReq.removeHeader('x-forwarded-server');
+        proxyReq.removeHeader('x-real-ip');
+        proxyReq.removeHeader('connection');
+        //proxyReq.removeHeader('method');
 
-// Proxy endpoint for Coinbase API for SOL-USD
-app.use('/products/SOL-USD/candles', createProxyMiddleware({
-    target: 'https://api.exchange.coinbase.com/products/SOL-USD/candles',
-    changeOrigin: true,
-    onProxyRes: function (proxyRes, req, res) {
-        res.header('Access-Control-Allow-Origin', '*');
-        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Method');
+        // Optionally, modify the Origin and Referer headers to match the expected values
+        proxyReq.setHeader('origin', 'https://solscan.io');
+        proxyReq.setHeader('referer', 'https://solscan.io/');
+        proxyReq.setHeader('accept', 'application/json, text/plain, */*');
+        proxyReq.setHeader('sol-au', generateRandomString());
+
+        console.log('proxyReq after modification:', proxyReq);
+        console.log('Modified request headers for upstream server:', proxyReq.getHeaders());
     },
-    pathRewrite: { '^/products/SOL-USD/candles': '' },
+    proxyRes: (proxyRes, req, res) => {
+        console.log('onProxyRes triggered');
+        console.log('Response from upstream server:', proxyRes);
+    },
+    error: (err, req, res) => {
+        console.log('Proxy error:', err);
+    },
+}
+
+// Explicitly handle OPTIONS for the proxy route
+app.options('/v2/validator/stake/reward', cors());
+
+app.use('/v2/validator/stake/reward', createProxyMiddleware({
+    target: 'https://api.solscan.io',
+    changeOrigin: true,
+    pathRewrite: { '^/': '/v2/validator/stake/reward' },
+    on: middlewareHandler,
+    secure: false, // Set to true if you want to verify the SSL certificate
 }));
 
-const port = 3000; // You can choose any port
+const port = 3000;
 app.listen(port, () => {
     console.log(`CORS proxy running on port ${port}`);
 });
